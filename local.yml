@@ -1,0 +1,175 @@
+- hosts: localhost
+  become: true
+  pre_tasks:
+    - name: update repositories
+      apt: update_cache=yes
+      changed_when: False
+  vars:
+    # ADS see https://learn.microsoft.com/en-us/sql/azure-data-studio/download-azure-data-studio
+    ADS_package_name: azuredatastudio-linux-1.41.1
+    ADS_package_url: 'https://go.microsoft.com/fwlink/?linkid=2222875'
+    AppGate_package_name: appgate
+    AppGate_package_url: 'https://sdpdownloads.appgate.com/latest/ubuntu/AppGate-SDP-client.deb'
+    docker_compose_version: '2.16.0'
+    minikube_package_name: minikube_latest_amd64
+    minikube_package_url: 'https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb'
+  tasks:
+
+    - name: Install "dbeaver-ce"
+      snap:
+        name: dbeaver-ce
+
+    - name: Install "code" with option --classic
+      snap:
+        name: code
+        classic: yes
+
+    - name: Install "dotnet-sdk" with option --classic
+      snap:
+        name: dotnet-sdk
+        classic: yes
+
+    - name: Install "powershell" with option --classic
+      snap:
+        name: powershell
+        classic: yes
+
+    - name: Install "kubectl" with option --classic
+      snap:
+        name: kubectl
+        classic: yes
+
+    - name: Install "helm" with option --classic
+      snap:
+        name: helm
+        classic: yes
+
+    - name: Install "gradle" with option --classic
+      snap:
+        name: gradle
+        classic: yes
+
+    - name: Install packages
+      apt:
+        name:
+        - docker.io
+        - libp11-3
+        - gnutls-bin
+        - libengine-pkcs11-openssl
+        - libpam-pkcs11
+        - pcsc-tools
+        - opensc-pkcs11
+        - opensc
+        - git-gui
+        - imediff
+        - meld
+        - python3-pip
+        - openjdk-11-jdk-headless
+        - maven
+        - kdiff3
+        - openssh-server
+        - liblttng-ust0
+        - libgconf-2-4
+        - libatk-adaptor
+
+    - name: Remove packages
+      apt:
+        name:
+        - nis
+        - rsh-server
+        - telnetd
+        state: absent
+        autoremove: yes
+
+    - name: Create VMWare parent shared directory if it does not exist
+      ansible.builtin.file:
+        path: /mnt/vmware
+        state: directory
+        owner: root
+        group: root
+        mode: '0555'
+
+    - name: Mount VMWare shared folder
+      shell: grep -q vmware /etc/fstab || echo '.host:/ /mnt/vmware fuse.vmhgfs-fuse allow_other 0 0' >> /etc/fstab
+
+    - name: Check if ADS is installed
+      command: dpkg-query -W azuredatastudio
+      register: ADS_package_check_deb
+      failed_when: ADS_package_check_deb.rc > 1
+      changed_when: ADS_package_check_deb.rc == 1
+    - name: Download ADS
+      get_url:
+        url="{{ ADS_package_url }}"
+        dest="/root/{{ ADS_package_name }}.deb"
+      when: ADS_package_check_deb.rc == 1
+    - name: Install ADS
+      apt: deb="/root/{{ ADS_package_name }}.deb"
+      when: ADS_package_check_deb.rc == 1
+
+    - name: Check if AppGate is installed
+      command: dpkg-query -W appgate
+      register: AppGate_package_check_deb
+      failed_when: AppGate_package_check_deb.rc > 1
+      changed_when: AppGate_package_check_deb.rc == 1
+    - name: Download AppGate
+      get_url:
+        url="{{ AppGate_package_url }}"
+        dest="/root/{{ AppGate_package_name }}.deb"
+      when: AppGate_package_check_deb.rc == 1
+    - name: Install AppGate
+      apt: deb="/root/{{ AppGate_package_name }}.deb"
+      when: AppGate_package_check_deb.rc == 1
+
+    - name: Check if minikube is installed
+      command: dpkg-query -W minikube
+      register: minikube_package_check_deb
+      failed_when: minikube_package_check_deb.rc > 1
+      changed_when: minikube_package_check_deb.rc == 1
+    - name: Download minikube
+      get_url:
+        url="{{ minikube_package_url }}"
+        dest="/root/{{ minikube_package_name }}.deb"
+      when: minikube_package_check_deb.rc == 1
+    - name: Install minikube
+      apt: deb="/root/{{ minikube_package_name }}.deb"
+      when: minikube_package_check_deb.rc == 1
+
+    - name: Check what version of docker-compose is installed
+      shell: docker-compose --version || echo v0
+      register: results
+    - set_fact:
+        re: 'v(?P<digit>[\d\.]+)$'
+    - set_fact:
+        value: "{{ results.stdout | regex_search(re, '\\g<digit>') }}"
+    - set_fact:
+        docker_compose_installed_version: "{{ value[0] }}"
+    - debug:
+        var: docker_compose_installed_version
+
+    - name: Download and install docker-compose
+      ansible.builtin.get_url:
+        url: "https://github.com/docker/compose/releases/download/v{{docker_compose_version}}/docker-compose-linux-x86_64"
+        dest: /usr/bin/docker-compose
+        mode: a+x
+      when: docker_compose_installed_version != docker_compose_version
+
+    - name: Install python packages
+      pip:
+        name:
+        - git-filter-repo
+        - graphtage
+        - semgrep
+        - sslscan
+        - trufflehog3
+        - yamllint
+
+    - name: Determine available groups
+      getent:
+        database: group
+
+    - name: Create docker group
+      command: addgroup --system docker
+      when: "'docker' not in ansible_facts.getent_group"
+
+    - name: Add docker group to current user {{ lookup('env', 'USER') }}
+      user: name="{{ lookup('env', 'USER') }}" groups="docker" append=yes
