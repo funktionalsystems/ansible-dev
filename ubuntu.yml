@@ -53,6 +53,7 @@
       apt:
         name:
         - docker.io
+        - dos2unix
         - libp11-3
         - gnutls-bin
         - libengine-pkcs11-openssl
@@ -62,10 +63,12 @@
         - opensc
         - git-gui
         - imediff
+        - jq
         - meld
         - python3-pip
         - openjdk-11-jdk-headless
         - maven
+        - npm
         - kdiff3
         - openssh-server
         - liblttng-ust0
