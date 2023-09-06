@@ -6,11 +6,11 @@
       changed_when: False
   vars:
     # ADS see https://learn.microsoft.com/en-us/sql/azure-data-studio/download-azure-data-studio
-    ADS_package_name: azuredatastudio-linux-1.41.1
-    ADS_package_url: 'https://go.microsoft.com/fwlink/?linkid=2222875'
+    ADS_package_name: azuredatastudio-linux-1.45.1
+    ADS_package_url: 'https://go.microsoft.com/fwlink/?linkid=2242943'
     AppGate_package_name: appgate
     AppGate_package_url: 'https://sdpdownloads.appgate.com/latest/ubuntu/AppGate-SDP-client.deb'
-    docker_compose_version: '2.16.0'
+    docker_compose_version: '2.20.2'
     minikube_package_name: minikube_latest_amd64
     minikube_package_url: 'https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb'
   tasks:

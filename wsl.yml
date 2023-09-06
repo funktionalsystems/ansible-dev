@@ -1,0 +1,84 @@
+- hosts: localhost
+  become: true
+  pre_tasks:
+    - name: update repositories
+      apt: update_cache=yes
+      changed_when: False
+  vars:
+    docker_compose_version: '2.20.2'
+    minikube_package_name: minikube_latest_amd64
+    minikube_package_url: 'https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb'
+  tasks:
+
+    - name: Install packages
+      apt:
+        name:
+        - docker.io
+        - jq
+        - maven
+        - openjdk-11-jdk-headless
+        - python3-pip
+
+    - name: Remove packages for security compliance
+      apt:
+        name:
+        - nis
+        - rsh-server
+        - telnetd
+        state: absent
+        autoremove: yes
+
+    - name: Check if minikube is installed
+      command: dpkg-query -W minikube
+      register: minikube_package_check_deb
+      failed_when: minikube_package_check_deb.rc > 1
+      changed_when: minikube_package_check_deb.rc == 1
+    - name: Download minikube
+      get_url:
+        url="{{ minikube_package_url }}"
+        dest="/root/{{ minikube_package_name }}.deb"
+      when: minikube_package_check_deb.rc == 1
+    - name: Install minikube
+      apt: deb="/root/{{ minikube_package_name }}.deb"
+      when: minikube_package_check_deb.rc == 1
+
+    - name: Check what version of docker-compose is installed
+      shell: docker-compose --version || echo v0
+      register: results
+    - set_fact:
+        re: 'v(?P<digit>[\d\.]+)$'
+    - set_fact:
+        value: "{{ results.stdout | regex_search(re, '\\g<digit>') }}"
+    - set_fact:
+        docker_compose_installed_version: "{{ value[0] }}"
+    - debug:
+        var: docker_compose_installed_version
+
+    - name: Download and install docker-compose
+      ansible.builtin.get_url:
+        url: "https://github.com/docker/compose/releases/download/v{{docker_compose_version}}/docker-compose-linux-x86_64"
+        dest: /usr/bin/docker-compose
+        mode: a+x
+      when: docker_compose_installed_version != docker_compose_version
+
+    - name: Determine available groups
+      getent:
+        database: group
+
+    - name: Create docker group
+      command: addgroup --system docker
+      when: "'docker' not in ansible_facts.getent_group"
+
+    - name: Add docker group to current user {{ lookup('env', 'USER') }}
+      user: name="{{ lookup('env', 'USER') }}" groups="docker" append=yes
+
+    - name: Start dockerd automatically
+      become_flags: '-E' # Needed for HOME to work
+      blockinfile: |
+        dest="{{ lookup('env', 'HOME') }}/.bashrc"
+        content="# Start Docker daemon automatically when logging in if not running.
+          RUNNING=`ps aux | grep dockerd | grep -v grep`
+          if [ -z "$RUNNING" ]; then
+              sudo dockerd > /dev/null 2>&1 &
+              disown
+          fi"
