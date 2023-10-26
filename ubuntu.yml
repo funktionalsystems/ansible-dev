@@ -74,6 +74,7 @@
         - liblttng-ust0
         - libgconf-2-4
         - libatk-adaptor
+        - unattended-upgrades
 
     - name: Remove packages
       apt:
@@ -81,6 +82,8 @@
         - nis
         - rsh-server
         - telnetd
+        - packagekit
+        - lubuntu-update-notifier
         state: absent
         autoremove: yes
 
