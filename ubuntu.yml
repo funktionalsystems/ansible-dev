@@ -179,3 +179,23 @@
 
     - name: Add docker group to current user {{ lookup('env', 'USER') }}
       user: name="{{ lookup('env', 'USER') }}" groups="docker" append=yes
+
+    - name: Start minikube automatically
+      become_flags: '-E' # Needed for HOME to work
+      blockinfile: |
+        dest="{{ lookup('env', 'HOME') }}/.bashrc"
+        content="# Start minkube automatically when logging in if not running.
+          RUNNING=`ps aux | grep minikube | grep -v grep`
+          if [ -z "$RUNNING" ]; then
+              minikube start
+          fi"
+
+    - name: bash aliases
+      become_flags: '-E' # Needed for HOME to work
+      blockinfile: |
+        dest="{{ lookup('env', 'HOME') }}/.bashrc"
+        content="# Aliases for convenience.
+          alias k=kubectl
+          alias g=git
+          alias d=docker
+          alias dc=docker-compose"
