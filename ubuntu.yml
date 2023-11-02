@@ -183,12 +183,24 @@
     - name: Start minikube automatically
       become_flags: '-E' # Needed for HOME to work
       blockinfile: |
-        dest="{{ lookup('env', 'HOME') }}/.bashrc"
-        content="# Start minkube automatically when logging in if not running.
-          RUNNING=`ps aux | grep minikube | grep -v grep`
-          if [ -z "$RUNNING" ]; then
-              minikube start
-          fi"
+        dest="/usr/lib/systemd/system/minikube.service"
+        content="
+        [Unit]
+        Description=minikube
+        After=network-online.target firewalld.service containerd.service docker.service
+        Wants=network-online.target docker.service
+        Requires=docker.socket containerd.service docker.service
+
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        WorkingDirectory={{ lookup('env', 'HOME') }}
+        ExecStart=/usr/bin/minikube start --driver=docker
+        ExecStop=/usr/bin/minikube stop
+        User={{ lookup('env', 'USER') }}
+
+        [Install]
+        WantedBy=multi-user.target"
 
     - name: bash aliases
       become_flags: '-E' # Needed for HOME to work
