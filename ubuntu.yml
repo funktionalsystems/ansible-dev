@@ -180,27 +180,38 @@
     - name: Add docker group to current user {{ lookup('env', 'USER') }}
       user: name="{{ lookup('env', 'USER') }}" groups="docker" append=yes
 
-    - name: Start minikube automatically
+#TODO: deamon refresh and enable and start
+    - name: Create minikube.service
       become_flags: '-E' # Needed for HOME to work
-      blockinfile: |
-        dest="/usr/lib/systemd/system/minikube.service"
-        content="
-        [Unit]
-        Description=minikube
-        After=network-online.target firewalld.service containerd.service docker.service
-        Wants=network-online.target docker.service
-        Requires=docker.socket containerd.service docker.service
+      blockinfile:
+        path: /usr/lib/systemd/system/minikube.service
+        create: true
+        block: |
+          [Unit]
+          Description=minikube
+          After=network-online.target firewalld.service containerd.service docker.service
+          Wants=network-online.target docker.service
+          Requires=docker.socket containerd.service docker.service
 
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        WorkingDirectory={{ lookup('env', 'HOME') }}
-        ExecStart=/usr/bin/minikube start --driver=docker
-        ExecStop=/usr/bin/minikube stop
-        User={{ lookup('env', 'USER') }}
+          [Service]
+          Type=oneshot
+          RemainAfterExit=yes
+          WorkingDirectory={{ lookup('env', 'HOME') }}
+          ExecStart=/usr/bin/minikube start --driver=docker
+          ExecStop=/usr/bin/minikube stop
+          User={{ lookup('env', 'USER') }}
 
-        [Install]
-        WantedBy=multi-user.target"
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable minikube.service
+      systemd:
+        name: minikube.service
+        state: started
+        daemon_reload: true
+        daemon_reexec: true
+        enabled: true
+      become: yes
 
     - name: bash aliases
       become_flags: '-E' # Needed for HOME to work
