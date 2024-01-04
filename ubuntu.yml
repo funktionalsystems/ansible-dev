@@ -5,12 +5,11 @@
       apt: update_cache=yes
       changed_when: False
   vars:
-    # ADS see https://learn.microsoft.com/en-us/sql/azure-data-studio/download-azure-data-studio
-    ADS_package_name: azuredatastudio-linux-1.45.1
-    ADS_package_url: 'https://go.microsoft.com/fwlink/?linkid=2242943'
+    # ADS Linux .deb x64 from https://learn.microsoft.com/en-us/sql/azure-data-studio/download-azure-data-studio
+    ADS_package_url: 'https://go.microsoft.com/fwlink/?linkid=2251736' # azuredatastudio-linux-1.47.0
     AppGate_package_name: appgate
     AppGate_package_url: 'https://sdpdownloads.appgate.com/latest/ubuntu/AppGate-SDP-client.deb'
-    docker_compose_version: '2.20.2'
+    docker_compose_version: '2.23.3'
     minikube_package_name: minikube_latest_amd64
     minikube_package_url: 'https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb'
   tasks:
@@ -64,6 +63,7 @@
         - git-gui
         - imediff
         - jq
+        - curl
         - meld
         - python3-pip
         - openjdk-11-jdk-headless
@@ -106,10 +106,10 @@
     - name: Download ADS
       get_url:
         url="{{ ADS_package_url }}"
-        dest="/root/{{ ADS_package_name }}.deb"
+        dest="/root/azuredatastudio.deb"
       when: ADS_package_check_deb.rc == 1
     - name: Install ADS
-      apt: deb="/root/{{ ADS_package_name }}.deb"
+      apt: deb="/root/azuredatastudio.deb"
       when: ADS_package_check_deb.rc == 1
 
     - name: Check if AppGate is installed
