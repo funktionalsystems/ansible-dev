@@ -1,3 +1,5 @@
+#!/bin/bash
+
 echo "Setting up passwordless sudo for user $USER. (You may be asked for your password.)"
 sudo grep $USER /etc/sudoers || echo "$USER    ALL=(ALL) NOPASSWD:ALL" | (sudo su -c 'EDITOR="tee -a" visudo')
 echo "Disable automatic updates."
